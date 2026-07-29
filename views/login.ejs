@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="wrap login-wrap">
+    <div class="card">
+      <h1>Espace admin</h1>
+      <p style="color: var(--muted); font-size: 14px;">Entrez le mot de passe pour gerer vos photos.</p>
+      <% if (error) { %>
+        <p class="error"><%= error %></p>
+      <% } %>
+      <form method="POST" action="/login">
+        <div>
+          <label for="password">Mot de passe</label><br />
+          <input type="password" id="password" name="password" required autofocus />
+        </div>
+        <button type="submit" class="btn primary">Se connecter</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

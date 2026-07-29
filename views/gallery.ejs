@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mes photos - Galerie</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <h1>Mes photos</h1>
+      <div style="display:flex; gap:8px;">
+        <a href="/upload" class="btn primary">+ Ajouter une photo</a>
+        <a href="/logout" class="btn">Se deconnecter</a>
+      </div>
+    </header>
+
+    <% if (photos.length === 0) { %>
+      <div class="card">
+        <p class="empty">Aucune photo pour l'instant. <a href="/upload">Ajoutez-en une</a>.</p>
+      </div>
+    <% } else { %>
+      <div class="grid">
+        <% photos.forEach(function(photo) { %>
+          <div class="card photo-card">
+            <img class="qr" src="<%= photo.qrDataUrl %>" alt="QR code pour <%= photo.name %>" />
+            <div class="name"><%= photo.name %></div>
+            <div class="actions">
+              <a class="btn" href="/qr/<%= photo.id %>.png" download>Telecharger QR</a>
+              <form method="POST" action="/delete/<%= photo.id %>" onsubmit="return confirm('Supprimer cette photo ?');">
+                <button type="submit" class="btn danger">Supprimer</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>
