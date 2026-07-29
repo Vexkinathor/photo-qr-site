@@ -18,6 +18,13 @@ const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const DB_FILE = path.join(__dirname, 'data', 'photos.json');
 
+// S'assure que les dossiers necessaires existent au demarrage
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeFileSync(DB_FILE, '[]');
+}
+
 // --- Petite "base de donnees" en fichier JSON ---
 function readDB() {
   if (!fs.existsSync(DB_FILE)) return [];
@@ -89,18 +96,22 @@ app.get('/', (req, res) => {
 });
 
 // --- Galerie admin : affiche uniquement le NOM + le QR code, jamais la photo ---
-app.get('/gallery', requireAuth, async (req, res) => {
-  const photos = readDB().sort((a, b) => b.createdAt - a.createdAt);
+app.get('/gallery', requireAuth, async (req, res, next) => {
+  try {
+    const photos = readDB().sort((a, b) => b.createdAt - a.createdAt);
 
-  const photosWithQr = await Promise.all(
-    photos.map(async (p) => {
-      const url = `${BASE_URL}/photo/${p.id}`;
-      const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 220 });
-      return { ...p, url, qrDataUrl };
-    })
-  );
+    const photosWithQr = await Promise.all(
+      photos.map(async (p) => {
+        const url = `${BASE_URL}/photo/${p.id}`;
+        const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 220 });
+        return { ...p, url, qrDataUrl };
+      })
+    );
 
-  res.render('gallery', { photos: photosWithQr });
+    res.render('gallery', { photos: photosWithQr });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // --- Formulaire d'upload ---
@@ -108,27 +119,31 @@ app.get('/upload', requireAuth, (req, res) => {
   res.render('upload', { error: null });
 });
 
-app.post('/upload', requireAuth, (req, res) => {
+app.post('/upload', requireAuth, (req, res, next) => {
   upload.single('photo')(req, res, (err) => {
-    if (err) {
-      return res.render('upload', { error: err.message });
+    try {
+      if (err) {
+        return res.render('upload', { error: err.message });
+      }
+      if (!req.file) {
+        return res.render('upload', { error: 'Aucune image selectionnee.' });
+      }
+
+      const name = (req.body.name || '').trim() || req.file.originalname;
+      const photos = readDB();
+
+      photos.push({
+        id: nanoid(10),
+        name,
+        filename: req.file.filename,
+        createdAt: Date.now()
+      });
+
+      writeDB(photos);
+      res.redirect('/gallery');
+    } catch (innerErr) {
+      next(innerErr);
     }
-    if (!req.file) {
-      return res.render('upload', { error: 'Aucune image selectionnee.' });
-    }
-
-    const name = (req.body.name || '').trim() || req.file.originalname;
-    const photos = readDB();
-
-    photos.push({
-      id: nanoid(10),
-      name,
-      filename: req.file.filename,
-      createdAt: Date.now()
-    });
-
-    writeDB(photos);
-    res.redirect('/gallery');
   });
 });
 
@@ -176,6 +191,19 @@ app.get('/img/:id', (req, res) => {
   if (!photo) return res.status(404).send('Introuvable');
 
   res.sendFile(path.join(UPLOAD_DIR, photo.filename));
+});
+
+// --- Gestion des erreurs : affiche un message clair au lieu d'une page blanche ---
+app.use((err, req, res, next) => {
+  console.error('Erreur serveur :', err);
+  res.status(500).send(`
+    <div style="font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 20px;">
+      <h1>Une erreur est survenue</h1>
+      <p>Le site a rencontre un probleme. Details techniques :</p>
+      <pre style="background:#f4f4f4; padding:12px; border-radius:8px; white-space: pre-wrap;">${err.message}</pre>
+      <p><a href="/gallery">Retour a la galerie</a></p>
+    </div>
+  `);
 });
 
 app.listen(PORT, () => {
