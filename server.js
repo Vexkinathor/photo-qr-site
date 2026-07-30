@@ -247,13 +247,21 @@ app.post('/reveal/:id', (req, res) => {
 });
 
 // --- Sert le fichier image reel, uniquement via l'id (pas de listing du dossier uploads) ---
+// Note : on ne bloque pas sur "photo.expired" ici. Juste apres le clic sur
+// "Afficher la photo", la photo peut deja etre marquee comme expiree (pour
+// empecher une deuxieme ouverture), mais le fichier existe encore quelques
+// secondes le temps que l'image charge vraiment a l'ecran. Si la photo n'est
+// plus dans la base (vraiment supprimee), "photo" sera introuvable ci-dessous.
 app.get('/img/:id', (req, res) => {
   const photos = readDB();
   const photo = photos.find((p) => p.id === req.params.id);
-  if (!photo || photo.expired) return res.status(404).send('Introuvable');
+  if (!photo) return res.status(404).send('Introuvable');
+
+  const filePath = path.join(UPLOAD_DIR, photo.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).send('Introuvable');
 
   res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(UPLOAD_DIR, photo.filename));
+  res.sendFile(filePath);
 });
 
 // --- Gestion des erreurs : affiche un message clair au lieu d'une page blanche ---
