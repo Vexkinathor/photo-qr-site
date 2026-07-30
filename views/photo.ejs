@@ -9,7 +9,42 @@
 <body>
   <div class="wrap photo-view">
     <h1><%= photo.name %></h1>
-    <img src="/img/<%= photo.id %>" alt="<%= photo.name %>" />
+
+    <div id="reveal-zone">
+      <p style="color: var(--muted);">Appuyez pour afficher la photo.</p>
+      <button id="reveal-btn" class="btn primary" style="padding: 14px 28px; font-size: 16px;">
+        Afficher la photo
+      </button>
+    </div>
+
+    <div id="photo-zone" style="display:none;">
+      <img id="photo-img" src="" alt="<%= photo.name %>" />
+    </div>
   </div>
+
+  <script>
+    document.getElementById('reveal-btn').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Chargement...';
+
+      fetch('/reveal/<%= photo.id %>', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            document.getElementById('reveal-zone').innerHTML =
+              '<p class="error">Cette photo n\'est plus disponible.</p>';
+            return;
+          }
+          document.getElementById('photo-img').src = data.imgUrl;
+          document.getElementById('reveal-zone').style.display = 'none';
+          document.getElementById('photo-zone').style.display = 'block';
+        })
+        .catch(function () {
+          document.getElementById('reveal-zone').innerHTML =
+            '<p class="error">Une erreur est survenue, reessayez.</p>';
+        });
+    });
+  </script>
 </body>
 </html>
