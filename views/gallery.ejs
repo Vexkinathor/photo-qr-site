@@ -11,31 +11,117 @@
     <header class="topbar">
       <h1>Mes photos</h1>
       <div style="display:flex; gap:8px;">
-        <a href="/upload" class="btn primary">+ Ajouter une photo</a>
+        <a href="/upload" class="btn primary">+ Ajouter</a>
         <a href="/logout" class="btn">Se deconnecter</a>
       </div>
     </header>
 
-    <% if (photos.length === 0) { %>
+    <% if (albums.length === 0 && photos.length === 0) { %>
       <div class="card">
         <p class="empty">Aucune photo pour l'instant. <a href="/upload">Ajoutez-en une</a>.</p>
       </div>
-    <% } else { %>
+    <% } %>
+
+    <% if (albums.length > 0) { %>
+      <h2 style="font-size: 16px; color: var(--muted); margin: 24px 0 12px;">Albums</h2>
+      <div class="grid">
+        <% albums.forEach(function(album) { %>
+          <div class="card photo-card">
+            <img class="qr" src="<%= album.qrDataUrl %>" alt="QR code pour <%= album.name %>" />
+
+            <form method="POST" action="/rename/album/<%= album.id %>" style="display:flex; gap:6px; margin-top:10px;">
+              <input type="text" name="name" value="<%= album.name %>" style="flex:1; padding:6px 8px; font-size:13px;" />
+              <button type="submit" class="btn" style="padding:6px 10px; font-size:12px;">Renommer</button>
+            </form>
+
+            <div style="color: var(--muted); font-size: 13px; margin-top: 8px;">
+              <%= album.photoCount %> photo(s) dans l'album
+            </div>
+
+            <div style="color: var(--muted); font-size: 13px; margin-top: 2px;">
+              <% if (album.maxViews) { %>
+                <%= album.viewCount || 0 %> / <%= album.maxViews %> ouverture(s)
+              <% } else { %>
+                Ouvertures illimitées (<%= album.viewCount || 0 %> jusqu'ici)
+              <% } %>
+            </div>
+
+            <div style="color: var(--muted); font-size: 12px; margin-top: 2px;">
+              <% if (album.expiresAt) { %>
+                Expire le <%= new Date(album.expiresAt).toLocaleString('fr-FR') %>
+              <% } else { %>
+                Pas d'expiration automatique
+              <% } %>
+            </div>
+
+            <% if (album.log && album.log.length > 0) { %>
+              <details style="margin-top: 8px; text-align: left;">
+                <summary style="cursor:pointer; color: var(--accent); font-size: 12px;">
+                  Journal (<%= album.log.length %>)
+                </summary>
+                <ul style="font-size: 12px; color: var(--muted); margin: 6px 0 0; padding-left: 16px;">
+                  <% album.log.slice().reverse().forEach(function(ts) { %>
+                    <li><%= new Date(ts).toLocaleString('fr-FR') %></li>
+                  <% }); %>
+                </ul>
+              </details>
+            <% } %>
+
+            <div class="actions">
+              <a class="btn" href="/qr/album/<%= album.id %>.png" download>Telecharger QR</a>
+              <form method="POST" action="/delete/album/<%= album.id %>" onsubmit="return confirm('Supprimer cet album et toutes ses photos ?');">
+                <button type="submit" class="btn danger">Supprimer</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (photos.length > 0) { %>
+      <h2 style="font-size: 16px; color: var(--muted); margin: 24px 0 12px;">Photos</h2>
       <div class="grid">
         <% photos.forEach(function(photo) { %>
           <div class="card photo-card">
             <img class="qr" src="<%= photo.qrDataUrl %>" alt="QR code pour <%= photo.name %>" />
-            <div class="name"><%= photo.name %></div>
-            <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">
+
+            <form method="POST" action="/rename/photo/<%= photo.id %>" style="display:flex; gap:6px; margin-top:10px;">
+              <input type="text" name="name" value="<%= photo.name %>" style="flex:1; padding:6px 8px; font-size:13px;" />
+              <button type="submit" class="btn" style="padding:6px 10px; font-size:12px;">Renommer</button>
+            </form>
+
+            <div style="color: var(--muted); font-size: 13px; margin-top: 8px;">
               <% if (photo.maxViews) { %>
                 <%= photo.viewCount || 0 %> / <%= photo.maxViews %> ouverture(s)
               <% } else { %>
                 Ouvertures illimitées (<%= photo.viewCount || 0 %> jusqu'ici)
               <% } %>
             </div>
+
+            <div style="color: var(--muted); font-size: 12px; margin-top: 2px;">
+              <% if (photo.expiresAt) { %>
+                Expire le <%= new Date(photo.expiresAt).toLocaleString('fr-FR') %>
+              <% } else { %>
+                Pas d'expiration automatique
+              <% } %>
+            </div>
+
+            <% if (photo.log && photo.log.length > 0) { %>
+              <details style="margin-top: 8px; text-align: left;">
+                <summary style="cursor:pointer; color: var(--accent); font-size: 12px;">
+                  Journal (<%= photo.log.length %>)
+                </summary>
+                <ul style="font-size: 12px; color: var(--muted); margin: 6px 0 0; padding-left: 16px;">
+                  <% photo.log.slice().reverse().forEach(function(ts) { %>
+                    <li><%= new Date(ts).toLocaleString('fr-FR') %></li>
+                  <% }); %>
+                </ul>
+              </details>
+            <% } %>
+
             <div class="actions">
-              <a class="btn" href="/qr/<%= photo.id %>.png" download>Telecharger QR</a>
-              <form method="POST" action="/delete/<%= photo.id %>" onsubmit="return confirm('Supprimer cette photo ?');">
+              <a class="btn" href="/qr/photo/<%= photo.id %>.png" download>Telecharger QR</a>
+              <form method="POST" action="/delete/photo/<%= photo.id %>" onsubmit="return confirm('Supprimer cette photo ?');">
                 <button type="submit" class="btn danger">Supprimer</button>
               </form>
             </div>
