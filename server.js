@@ -19,6 +19,8 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const DB_FILE = path.join(__dirname, 'data', 'photos.json');
 
 // S'assure que les dossiers necessaires existent au demarrage
+// (evite un plantage si "uploads" ou "data" ne sont pas presents, par exemple
+// s'ils n'ont pas ete correctement envoyes sur GitHub)
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 if (!fs.existsSync(DB_FILE)) {
@@ -34,6 +36,17 @@ function readDB() {
 
 function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+}
+
+// Supprime definitivement une photo (fichier + entree en base)
+function deletePhoto(id) {
+  const photos = readDB();
+  const photo = photos.find((p) => p.id === id);
+  if (photo) {
+    const filePath = path.join(UPLOAD_DIR, photo.filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  writeDB(photos.filter((p) => p.id !== id));
 }
 
 // --- Config Multer (upload de fichiers) ---
@@ -130,13 +143,27 @@ app.post('/upload', requireAuth, (req, res, next) => {
       }
 
       const name = (req.body.name || '').trim() || req.file.originalname;
+
+      // Nombre max d'ouvertures avant suppression automatique (vide = illimite)
+      const maxViewsRaw = (req.body.maxViews || '').trim();
+      let maxViews = null;
+      if (maxViewsRaw !== '') {
+        const parsed = parseInt(maxViewsRaw, 10);
+        if (Number.isInteger(parsed) && parsed > 0) {
+          maxViews = parsed;
+        }
+      }
+
       const photos = readDB();
 
       photos.push({
         id: nanoid(10),
         name,
         filename: req.file.filename,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        maxViews,        // null = illimite
+        viewCount: 0,
+        expired: false
       });
 
       writeDB(photos);
@@ -147,17 +174,9 @@ app.post('/upload', requireAuth, (req, res, next) => {
   });
 });
 
-// --- Suppression d'une photo ---
+// --- Suppression d'une photo (manuelle, depuis la galerie) ---
 app.post('/delete/:id', requireAuth, (req, res) => {
-  const photos = readDB();
-  const photo = photos.find((p) => p.id === req.params.id);
-
-  if (photo) {
-    const filePath = path.join(UPLOAD_DIR, photo.filename);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    writeDB(photos.filter((p) => p.id !== req.params.id));
-  }
-
+  deletePhoto(req.params.id);
   res.redirect('/gallery');
 });
 
@@ -173,39 +192,4 @@ app.get('/qr/:id.png', requireAuth, async (req, res) => {
 });
 
 // --- Page PUBLIQUE : c'est ce qui s'ouvre quand on scanne le QR code ---
-app.get('/photo/:id', (req, res) => {
-  const photos = readDB();
-  const photo = photos.find((p) => p.id === req.params.id);
-
-  if (!photo) {
-    return res.status(404).send('Photo introuvable.');
-  }
-
-  res.render('photo', { photo });
-});
-
-// --- Sert le fichier image reel, uniquement via l'id (pas de listing du dossier uploads) ---
-app.get('/img/:id', (req, res) => {
-  const photos = readDB();
-  const photo = photos.find((p) => p.id === req.params.id);
-  if (!photo) return res.status(404).send('Introuvable');
-
-  res.sendFile(path.join(UPLOAD_DIR, photo.filename));
-});
-
-// --- Gestion des erreurs : affiche un message clair au lieu d'une page blanche ---
-app.use((err, req, res, next) => {
-  console.error('Erreur serveur :', err);
-  res.status(500).send(`
-    <div style="font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 20px;">
-      <h1>Une erreur est survenue</h1>
-      <p>Le site a rencontre un probleme. Details techniques :</p>
-      <pre style="background:#f4f4f4; padding:12px; border-radius:8px; white-space: pre-wrap;">${err.message}</pre>
-      <p><a href="/gallery">Retour a la galerie</a></p>
-    </div>
-  `);
-});
-
-app.listen(PORT, () => {
-  console.log(`Site photo-QR lance sur ${BASE_URL} (port ${PORT})`);
-});
+app.get('/photo
