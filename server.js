@@ -192,4 +192,83 @@ app.get('/qr/:id.png', requireAuth, async (req, res) => {
 });
 
 // --- Page PUBLIQUE : c'est ce qui s'ouvre quand on scanne le QR code ---
-app.get('/photo
+// Important : cette page NE compte PAS encore l'ouverture. Elle affiche
+// juste le nom et un bouton. C'est volontaire : les applications de
+// messagerie (WhatsApp, Messenger...) chargent automatiquement cette page
+// en arriere-plan pour generer un apercu du lien, avant meme que la
+// personne ne clique dessus. Si on comptait ici, cet apercu automatique
+// consommerait une ouverture "pour rien".
+app.get('/photo/:id', (req, res) => {
+  const photos = readDB();
+  const photo = photos.find((p) => p.id === req.params.id);
+
+  // "expired" = la limite d'ouvertures a deja ete atteinte
+  if (!photo || photo.expired) {
+    return res.status(404).send('Photo introuvable.');
+  }
+
+  res.set('Cache-Control', 'no-store');
+  res.render('photo', { photo });
+});
+
+// --- Revelation de la photo : appelee uniquement quand la personne clique
+// sur le bouton "Afficher la photo". C'est CE moment precis qui compte comme
+// une vraie ouverture (un robot d'apercu automatique ne declenche jamais de
+// clic, donc il ne consomme plus d'ouverture).
+app.post('/reveal/:id', (req, res) => {
+  const photos = readDB();
+  const photo = photos.find((p) => p.id === req.params.id);
+
+  if (!photo || photo.expired) {
+    return res.status(404).json({ ok: false });
+  }
+
+  photo.viewCount = (photo.viewCount || 0) + 1;
+  writeDB(photos);
+
+  const reachedLimit = photo.maxViews && photo.viewCount >= photo.maxViews;
+
+  if (reachedLimit) {
+    const current = readDB();
+    const target = current.find((p) => p.id === photo.id);
+    if (target) {
+      target.expired = true;
+      writeDB(current);
+    }
+
+    // On laisse quelques secondes pour que l'image ait le temps de charger
+    // avant de vraiment supprimer le fichier.
+    setTimeout(() => {
+      deletePhoto(photo.id);
+    }, 8000);
+  }
+
+  res.json({ ok: true, imgUrl: `/img/${photo.id}` });
+});
+
+// --- Sert le fichier image reel, uniquement via l'id (pas de listing du dossier uploads) ---
+app.get('/img/:id', (req, res) => {
+  const photos = readDB();
+  const photo = photos.find((p) => p.id === req.params.id);
+  if (!photo || photo.expired) return res.status(404).send('Introuvable');
+
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(UPLOAD_DIR, photo.filename));
+});
+
+// --- Gestion des erreurs : affiche un message clair au lieu d'une page blanche ---
+app.use((err, req, res, next) => {
+  console.error('Erreur serveur :', err);
+  res.status(500).send(`
+    <div style="font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 20px;">
+      <h1>Une erreur est survenue</h1>
+      <p>Le site a rencontre un probleme. Details techniques :</p>
+      <pre style="background:#f4f4f4; padding:12px; border-radius:8px; white-space: pre-wrap;">${err.message}</pre>
+      <p><a href="/gallery">Retour a la galerie</a></p>
+    </div>
+  `);
+});
+
+app.listen(PORT, () => {
+  console.log(`Site photo-QR lance sur ${BASE_URL} (port ${PORT})`);
+});
