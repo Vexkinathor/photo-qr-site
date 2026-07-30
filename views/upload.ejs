@@ -9,30 +9,51 @@
 <body>
   <div class="wrap">
     <header class="topbar">
-      <h1>Ajouter une photo</h1>
+      <h1>Ajouter des photos</h1>
       <a href="/gallery" class="btn">&larr; Retour a la galerie</a>
     </header>
 
-    <div class="card" style="max-width: 480px;">
+    <div class="card" style="max-width: 520px;">
       <% if (error) { %>
         <p class="error"><%= error %></p>
       <% } %>
       <form method="POST" action="/upload" enctype="multipart/form-data">
         <div>
-          <label for="name">Nom de la photo</label><br />
+          <label for="name">Nom</label><br />
           <input type="text" id="name" name="name" placeholder="Ex: Anniversaire de Julie" />
+          <p style="color: var(--muted); font-size: 12px; margin: 4px 0 0;">
+            Si vous selectionnez plusieurs photos, ce nom sera celui de l'album
+            (chaque photo garde son nom de fichier d'origine).
+          </p>
         </div>
+
         <div>
-          <label for="photo">Fichier image</label><br />
-          <input type="file" id="photo" name="photo" accept="image/*" required />
+          <label for="photos">Fichier(s) image</label><br />
+          <input type="file" id="photos" name="photos" accept="image/*" multiple required />
+          <p style="color: var(--muted); font-size: 12px; margin: 4px 0 0;">
+            Une seule photo = QR code individuel. Plusieurs photos = un album
+            avec un seul QR code pour tout le groupe.
+          </p>
         </div>
+
         <div>
           <label for="maxViews">Nombre maximum d'ouvertures avant suppression automatique</label><br />
           <input type="number" id="maxViews" name="maxViews" min="1" placeholder="Laisser vide = illimite" />
         </div>
-        <button type="submit" class="btn primary">Ajouter et generer le QR code</button>
-      </form>
-    </div>
-  </div>
-</body>
-</html>
+
+        <div>
+          <label for="duration">Expiration automatique</label><br />
+          <select id="duration" name="duration">
+            <option value="">Jamais (pas d'expiration automatique)</option>
+            <option value="1h">Dans 1 heure</option>
+            <option value="24h">Dans 24 heures</option>
+            <option value="7d">Dans 7 jours</option>
+            <option value="30d">Dans 30 jours</option>
+          </select>
+          <p style="color: var(--muted); font-size: 12px; margin: 4px 0 0;">
+            Supprime automatiquement la photo (ou l'album) a l'heure prevue,
+            meme si personne ne l'a ouverte.
+          </p>
+        </div>
+
+        <div>
