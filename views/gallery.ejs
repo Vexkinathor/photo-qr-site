@@ -26,6 +26,13 @@
           <div class="card photo-card">
             <img class="qr" src="<%= photo.qrDataUrl %>" alt="QR code pour <%= photo.name %>" />
             <div class="name"><%= photo.name %></div>
+            <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">
+              <% if (photo.maxViews) { %>
+                <%= photo.viewCount || 0 %> / <%= photo.maxViews %> ouverture(s)
+              <% } else { %>
+                Ouvertures illimitées (<%= photo.viewCount || 0 %> jusqu'ici)
+              <% } %>
+            </div>
             <div class="actions">
               <a class="btn" href="/qr/<%= photo.id %>.png" download>Telecharger QR</a>
               <form method="POST" action="/delete/<%= photo.id %>" onsubmit="return confirm('Supprimer cette photo ?');">
