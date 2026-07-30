@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= album.name %></title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="wrap photo-view">
+    <h1><%= album.name %></h1>
+
+    <div id="reveal-zone" class="reveal-box">
+      <p style="color: var(--muted);">Appuyez pour afficher les photos de cet album.</p>
+      <button id="reveal-btn" class="btn primary" style="padding: 14px 28px; font-size: 16px;">
+        Afficher les photos
+      </button>
+    </div>
+
+    <div id="album-zone" class="album-grid" style="display:none;"></div>
+  </div>
+
+  <script>
+    document.getElementById('reveal-btn').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Chargement...';
+
+      fetch('/reveal-album/<%= album.id %>', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            document.getElementById('reveal-zone').innerHTML =
+              '<p class="error">Cet album n\'est plus disponible.</p>';
+            return;
+          }
+
+          var zone = document.getElementById('album-zone');
+          data.items.forEach(function (item) {
+            var block = document.createElement('div');
+            block.className = 'photo-frame album-item';
+
+            var img = document.createElement('img');
+            img.src = item.imgUrl;
+            img.alt = item.name;
+            block.appendChild(img);
+
+            var link = document.createElement('a');
+            link.href = item.imgUrl;
+            link.className = 'btn';
+            link.setAttribute('download', '');
+            link.textContent = 'Telecharger';
+            link.style.marginTop = '10px';
+            link.style.display = 'inline-block';
+            block.appendChild(link);
+
+            zone.appendChild(block);
+          });
+
+          document.getElementById('reveal-zone').style.display = 'none';
+          zone.style.display = 'grid';
+        })
+        .catch(function () {
+          document.getElementById('reveal-zone').innerHTML =
+            '<p class="error">Une erreur est survenue, reessayez.</p>';
+        });
+    });
+  </script>
+</body>
+</html>
