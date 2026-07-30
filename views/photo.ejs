@@ -10,7 +10,7 @@
   <div class="wrap photo-view">
     <h1><%= photo.name %></h1>
 
-    <div id="reveal-zone">
+    <div id="reveal-zone" class="reveal-box">
       <p style="color: var(--muted);">Appuyez pour afficher la photo.</p>
       <button id="reveal-btn" class="btn primary" style="padding: 14px 28px; font-size: 16px;">
         Afficher la photo
@@ -18,7 +18,12 @@
     </div>
 
     <div id="photo-zone" style="display:none;">
-      <img id="photo-img" src="" alt="<%= photo.name %>" />
+      <div class="photo-frame">
+        <img id="photo-img" src="" alt="<%= photo.name %>" />
+      </div>
+      <a id="download-link" class="btn" style="margin-top: 16px; display:inline-block;" download>
+        Telecharger
+      </a>
     </div>
   </div>
 
@@ -36,7 +41,9 @@
               '<p class="error">Cette photo n\'est plus disponible.</p>';
             return;
           }
-          document.getElementById('photo-img').src = data.imgUrl;
+          var img = document.getElementById('photo-img');
+          img.src = data.imgUrl;
+          document.getElementById('download-link').href = data.imgUrl;
           document.getElementById('reveal-zone').style.display = 'none';
           document.getElementById('photo-zone').style.display = 'block';
         })
